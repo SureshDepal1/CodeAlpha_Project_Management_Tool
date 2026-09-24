@@ -46,7 +46,11 @@ const ensureColumnInProject = async (projectId, columnId) => {
 
 export const listTasks = async (req, res) => {
   const tasks = await populateTask(Task.find({ project: req.project._id }).sort({ column: 1, order: 1, createdAt: 1 }));
-  return res.status(200).json({ tasks });
+  const tasksWithCommentCount = await Promise.all(tasks.map(async (task) => ({
+    ...task.toObject(),
+    commentCount: await Comment.countDocuments({ task: task._id }),
+  })));
+  return res.status(200).json({ tasks: tasksWithCommentCount });
 };
 
 export const createTask = async (req, res) => {
