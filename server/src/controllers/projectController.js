@@ -1,5 +1,7 @@
 import Column from '../models/Column.js';
+import Comment from '../models/Comment.js';
 import Project from '../models/Project.js';
+import Task from '../models/Task.js';
 import User from '../models/User.js';
 
 const userFields = 'name email avatarColor';
@@ -56,9 +58,13 @@ export const updateProject = async (req, res) => {
 };
 
 export const deleteProject = async (req, res) => {
+  const projectTasks = await Task.find({ project: req.project._id }).select('_id');
+
   await Promise.all([
     Project.deleteOne({ _id: req.project._id }),
     Column.deleteMany({ project: req.project._id }),
+    Task.deleteMany({ project: req.project._id }),
+    Comment.deleteMany({ task: { $in: projectTasks.map(({ _id: taskId }) => taskId) } }),
   ]);
 
   return res.status(204).send();

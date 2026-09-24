@@ -8,7 +8,7 @@ const projectError = (message, statusCode, code) => {
 };
 
 export const requireProjectMember = async (req, _res, next) => {
-  const project = await Project.findById(req.params.id);
+  const project = await Project.findById(req.params.projectId || req.params.id);
 
   if (!project) {
     return next(projectError('Project not found', 404, 'PROJECT_NOT_FOUND'));
