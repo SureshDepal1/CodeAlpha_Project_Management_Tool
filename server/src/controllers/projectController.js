@@ -40,8 +40,8 @@ export const createProject = async (req, res) => {
     throw error;
   }
 
-  await populateProject(Project.findById(project._id));
-  return res.status(201).json({ project });
+  const populatedProject = await populateProject(Project.findById(project._id));
+  return res.status(201).json({ project: populatedProject });
 };
 
 export const getProject = async (req, res) => res.status(200).json({ project: req.project });
@@ -52,9 +52,9 @@ export const updateProject = async (req, res) => {
   if (title !== undefined) req.project.title = title;
   if (description !== undefined) req.project.description = description;
   await req.project.save();
-  await populateProject(Project.findById(req.project._id));
+  const populatedProject = await populateProject(Project.findById(req.project._id));
 
-  return res.status(200).json({ project: req.project });
+  return res.status(200).json({ project: populatedProject });
 };
 
 export const deleteProject = async (req, res) => {
@@ -89,9 +89,9 @@ export const addMember = async (req, res) => {
 
   req.project.members.push({ user: user._id, role: 'member' });
   await req.project.save();
-  await populateProject(Project.findById(req.project._id));
+  const populatedProject = await populateProject(Project.findById(req.project._id));
 
-  return res.status(200).json({ project: req.project });
+  return res.status(200).json({ project: populatedProject });
 };
 
 export const removeMember = async (req, res) => {
@@ -121,7 +121,7 @@ export const removeMember = async (req, res) => {
 
   req.project.members.splice(memberIndex, 1);
   await req.project.save();
-  await populateProject(Project.findById(req.project._id));
+  const populatedProject = await populateProject(Project.findById(req.project._id));
 
-  return res.status(200).json({ project: req.project });
+  return res.status(200).json({ project: populatedProject });
 };
