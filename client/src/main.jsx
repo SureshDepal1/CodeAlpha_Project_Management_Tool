@@ -6,15 +6,18 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { SocketProvider } from './context/SocketContext.jsx'
+import { ThemeProvider } from './context/ThemeContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <SocketProvider>
-          <App />
-          <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
-        </SocketProvider>
+        <ThemeProvider>
+          <SocketProvider>
+            <App />
+            <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+          </SocketProvider>
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

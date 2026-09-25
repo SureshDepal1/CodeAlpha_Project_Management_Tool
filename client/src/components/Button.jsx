@@ -1,4 +1,4 @@
-export default function Button({ children, variant = 'primary', className = '', ...props }) {
+export default function Button({ children, variant = 'primary', className = '', as: Component = 'button', ...props }) {
   const styles = { primary: 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700', secondary: 'border border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:bg-indigo-50', ghost: 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' }
-  return <button className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${styles[variant]} ${className}`} {...props}>{children}</button>
+  return <Component className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${styles[variant]} ${className}`} {...props}>{children}</Component>
 }
