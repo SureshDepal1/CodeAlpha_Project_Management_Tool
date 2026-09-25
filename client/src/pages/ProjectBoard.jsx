@@ -9,6 +9,8 @@ import Badge from '../components/Badge.jsx'
 import Button from '../components/Button.jsx'
 import Input from '../components/Input.jsx'
 import TaskDetailModal from '../components/TaskDetailModal.jsx'
+import { useSocket } from '../context/SocketContext.jsx'
+import { useAuth } from '../hooks/useAuth.js'
 
 const priorityTone = { low: 'green', medium: 'indigo', high: 'amber' }
 const priorityLabel = { low: 'Low', medium: 'Medium', high: 'High' }
@@ -53,6 +55,8 @@ function ColumnSkeleton() {
 export default function ProjectBoard() {
   const { projectId } = useParams()
   const navigate = useNavigate()
+  const { socket } = useSocket()
+  const { user } = useAuth()
   const [project, setProject] = useState(null)
   const [columns, setColumns] = useState([])
   const [tasks, setTasks] = useState([])
@@ -77,6 +81,37 @@ export default function ProjectBoard() {
       setTasks(tasksResponse.data.tasks)
     }).catch((error) => toast.error(error.response?.data?.message || 'Could not load the project board.')).finally(() => setIsLoading(false))
   }, [projectId])
+
+  useEffect(() => {
+    if (!socket || !projectId) return undefined
+    socket.emit('project:join', projectId)
+    const updateTaskFromSocket = ({ task, tasks: incomingTasks }) => {
+      const updates = incomingTasks || [task]
+      setTasks((current) => updates.reduce((next, update) => next.some((item) => item._id === update._id) ? next.map((item) => item._id === update._id ? { ...item, ...update } : item) : [...next, update], current))
+    }
+    const updateCommentCount = ({ taskId, amount, actorId }) => {
+      if (actorId === user?.id) return
+      setTasks((current) => current.map((task) => task._id === taskId ? { ...task, commentCount: Math.max(0, (task.commentCount || 0) + amount) } : task))
+    }
+    const updateProject = ({ project: updatedProject }) => setProject(updatedProject)
+    const handleCommentCreated = (payload) => updateCommentCount({ ...payload, amount: 1 })
+    const handleCommentDeleted = (payload) => updateCommentCount({ ...payload, amount: -1 })
+    socket.on('task:created', updateTaskFromSocket)
+    socket.on('task:updated', updateTaskFromSocket)
+    socket.on('task:moved', updateTaskFromSocket)
+    socket.on('comment:created', handleCommentCreated)
+    socket.on('comment:deleted', handleCommentDeleted)
+    socket.on('project:member-added', updateProject)
+    return () => {
+      socket.emit('project:leave', projectId)
+      socket.off('task:created', updateTaskFromSocket)
+      socket.off('task:updated', updateTaskFromSocket)
+      socket.off('task:moved', updateTaskFromSocket)
+      socket.off('comment:created', handleCommentCreated)
+      socket.off('comment:deleted', handleCommentDeleted)
+      socket.off('project:member-added', updateProject)
+    }
+  }, [socket, projectId, user?.id])
 
   const projectMembers = useMemo(() => {
     if (!project) return []
@@ -111,7 +146,7 @@ export default function ProjectBoard() {
     if (!newTaskTitle.trim()) return
     try {
       const { data } = await api.post(`/projects/${projectId}/tasks`, { title: newTaskTitle.trim(), column: columnId, priority: 'medium' })
-      setTasks((current) => [...current, data.task])
+      setTasks((current) => current.some((task) => task._id === data.task._id) ? current : [...current, data.task])
       setNewTaskTitle('')
       setNewTaskColumn(null)
       toast.success('Task added.')

@@ -3,6 +3,7 @@ import Comment from '../models/Comment.js';
 import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import { createNotification, emitToProject } from '../realtime/socket.js';
 
 const userFields = 'name email avatarColor';
 
@@ -90,6 +91,13 @@ export const addMember = async (req, res) => {
   req.project.members.push({ user: user._id, role: 'member' });
   await req.project.save();
   const populatedProject = await populateProject(Project.findById(req.project._id));
+  await createNotification({
+    recipient: user._id,
+    type: 'project_added',
+    message: `You were added to ${req.project.title}.`,
+    link: `/projects/${req.project._id}/board`,
+  });
+  emitToProject(req.project._id, 'project:member-added', { project: populatedProject });
 
   return res.status(200).json({ project: populatedProject });
 };

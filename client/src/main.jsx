@@ -5,13 +5,16 @@ import { Toaster } from 'react-hot-toast'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { SocketProvider } from './context/SocketContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
-        <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+        <SocketProvider>
+          <App />
+          <Toaster position="top-right" toastOptions={{ duration: 3500 }} />
+        </SocketProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

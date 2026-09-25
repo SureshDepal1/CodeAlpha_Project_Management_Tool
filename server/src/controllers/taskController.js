@@ -2,6 +2,7 @@ import Column from '../models/Column.js';
 import Comment from '../models/Comment.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import { createNotification, emitToProject } from '../realtime/socket.js';
 
 const userFields = 'name email avatarColor';
 const populateTask = (query) => query
@@ -63,6 +64,15 @@ export const createTask = async (req, res) => {
     order: req.body.order ?? await taskOrder(req.project._id, req.body.column),
   });
   const populatedTask = await populateTask(Task.findById(task._id));
+  emitToProject(req.project._id, 'task:created', { task: populatedTask });
+  if (task.assignee && !task.assignee.equals(req.user._id)) {
+    await createNotification({
+      recipient: task.assignee,
+      type: 'task_assigned',
+      message: `You were assigned to "${task.title}".`,
+      link: `/projects/${req.project._id}/board`,
+    });
+  }
   return res.status(201).json({ task: populatedTask });
 };
 
@@ -72,6 +82,7 @@ export const getTask = async (req, res) => {
 };
 
 export const updateTask = async (req, res) => {
+  const previousAssignee = req.task.assignee?.toString();
   for (const field of taskFields) {
     if (req.body[field] !== undefined) req.task[field] = req.body[field];
   }
@@ -79,6 +90,15 @@ export const updateTask = async (req, res) => {
   if (req.body.assignee !== undefined) await validateAssignee(req.project, req.body.assignee);
   await req.task.save();
   const task = await populateTask(Task.findById(req.task._id));
+  emitToProject(req.project._id, 'task:updated', { task });
+  if (task.assignee && task.assignee._id.toString() !== req.user._id.toString() && task.assignee._id.toString() !== previousAssignee) {
+    await createNotification({
+      recipient: task.assignee._id,
+      type: 'task_assigned',
+      message: `You were assigned to "${task.title}".`,
+      link: `/projects/${req.project._id}/board`,
+    });
+  }
   return res.status(200).json({ task });
 };
 
@@ -111,6 +131,8 @@ export const moveTask = async (req, res) => {
   req.task.order = targetOrder;
   await req.task.save();
   const task = await populateTask(Task.findById(req.task._id));
+  const projectTasks = await populateTask(Task.find({ project: req.project._id }).sort({ column: 1, order: 1, createdAt: 1 }));
+  emitToProject(req.project._id, 'task:moved', { task, tasks: projectTasks });
   return res.status(200).json({ task });
 };
 
@@ -122,6 +144,15 @@ export const listComments = async (req, res) => {
 export const createComment = async (req, res) => {
   const comment = await Comment.create({ task: req.task._id, author: req.user._id, text: req.body.text });
   const populatedComment = await populateComment(Comment.findById(comment._id));
+  emitToProject(req.task.project, 'comment:created', { taskId: req.task._id, comment: populatedComment, actorId: req.user._id });
+  if (req.task.assignee && !req.task.assignee.equals(req.user._id)) {
+    await createNotification({
+      recipient: req.task.assignee,
+      type: 'task_commented',
+      message: `${req.user.name} commented on "${req.task.title}".`,
+      link: `/projects/${req.task.project}/board`,
+    });
+  }
   return res.status(201).json({ comment: populatedComment });
 };
 
@@ -140,5 +171,6 @@ export const deleteComment = async (req, res) => {
     throw error;
   }
   await comment.deleteOne();
+  emitToProject(req.task.project, 'comment:deleted', { taskId: req.task._id, commentId: req.params.commentId, actorId: req.user._id });
   return res.status(204).send();
 };

@@ -6,6 +6,7 @@ import Avatar from './Avatar.jsx'
 import Badge from './Badge.jsx'
 import Button from './Button.jsx'
 import Modal from './Modal.jsx'
+import { useSocket } from '../context/SocketContext.jsx'
 
 const priorityTone = { low: 'green', medium: 'indigo', high: 'amber' }
 const priorityLabel = { low: 'Low', medium: 'Medium', high: 'High' }
@@ -24,6 +25,8 @@ const formatRelativeTime = (date) => {
 }
 
 export default function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
+  const { socket } = useSocket()
+  const taskId = task?._id
   const [draft, setDraft] = useState(null)
   const [comments, setComments] = useState([])
   const [commentText, setCommentText] = useState('')
@@ -41,6 +44,23 @@ export default function TaskDetailModal({ task, members, onClose, onTaskUpdated 
     setIsLoading(true)
     api.get(`/tasks/${task._id}/comments`).then(({ data }) => setComments(data.comments)).catch((error) => setLoadError(error.response?.data?.message || 'We could not load the activity yet.')).finally(() => setIsLoading(false))
   }, [task])
+
+  useEffect(() => {
+    if (!socket || !taskId) return undefined
+    const handleCommentCreated = ({ taskId: eventTaskId, comment }) => {
+      if (eventTaskId !== taskId) return
+      setComments((current) => current.some((item) => item._id === comment._id) ? current : [...current, comment])
+    }
+    const handleCommentDeleted = ({ taskId: eventTaskId, commentId }) => {
+      if (eventTaskId === taskId) setComments((current) => current.filter((comment) => comment._id !== commentId))
+    }
+    socket.on('comment:created', handleCommentCreated)
+    socket.on('comment:deleted', handleCommentDeleted)
+    return () => {
+      socket.off('comment:created', handleCommentCreated)
+      socket.off('comment:deleted', handleCommentDeleted)
+    }
+  }, [socket, taskId])
 
   const hasChanges = useMemo(() => draft && (draft.title !== task?.title || draft.description !== (task?.description || '') || draft.priority !== task?.priority || draft.dueDate !== formatDateInput(task?.dueDate) || draft.assignee !== (task?.assignee?._id || '')), [draft, task])
 

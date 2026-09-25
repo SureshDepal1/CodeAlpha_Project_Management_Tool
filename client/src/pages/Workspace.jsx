@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bell, CheckCircle2, ChevronDown, LayoutGrid, LogOut, Menu, Plus, Search, Users, X } from 'lucide-react'
+import { CheckCircle2, ChevronDown, LayoutGrid, LogOut, Menu, Plus, Search, Users, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { api } from '../api/client.js'
 import Avatar from '../components/Avatar.jsx'
@@ -7,6 +7,7 @@ import Badge from '../components/Badge.jsx'
 import Button from '../components/Button.jsx'
 import Input from '../components/Input.jsx'
 import Modal from '../components/Modal.jsx'
+import { Bell } from '../components/NotificationBell.jsx'
 import { useAuth } from '../hooks/useAuth.js'
 
 function Skeleton({ className = '' }) {
