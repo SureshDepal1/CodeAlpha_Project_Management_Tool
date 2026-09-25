@@ -46,7 +46,7 @@ copy .env.example server\.env
 copy client\.env.example client\.env
 ```
 
-Set a long random `JWT_SECRET` and a reachable `MONGODB_URI` in `server/.env`. For local development, the defaults in `client/.env.example` are sufficient.
+Set a long random `JWT_SECRET`, a reachable `MONGODB_URI`, and Gmail App Password credentials in `server/.env`. `EMAIL_USER` is the Gmail address used as the sender; `EMAIL_PASS` must be a Google App Password, never the account password. For local development, the defaults in `client/.env.example` are sufficient.
 
 ### Run
 
@@ -86,9 +86,11 @@ All routes except health, login, and registration require `Authorization: Bearer
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `POST` | `/api/auth/register` | Create an account and return a JWT |
+| `POST` | `/api/auth/register` | Create an account and send a verification email |
 | `POST` | `/api/auth/login` | Authenticate and return a JWT |
 | `GET` | `/api/auth/me` | Return the current user |
+| `GET` | `/api/auth/verify-email/:token` | Confirm a one-hour email verification token |
+| `POST` | `/api/auth/resend-verification` | Send a replacement verification email |
 
 ### Projects and tasks
 
@@ -142,6 +144,8 @@ Set these environment variables on Render:
 MONGODB_URI=mongodb+srv://...
 JWT_SECRET=<long-random-secret>
 JWT_EXPIRES_IN=7d
+EMAIL_USER=your-gmail-address@gmail.com
+EMAIL_PASS=<gmail-app-password>
 CLIENT_URL=https://<your-vercel-domain>
 ```
 

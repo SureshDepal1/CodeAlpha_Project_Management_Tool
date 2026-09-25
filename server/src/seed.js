@@ -17,7 +17,12 @@ const demoUsers = [
 
 const getOrCreateUser = async (details) => {
   const existing = await User.findOne({ email: details.email })
-  return existing || User.create(details)
+  if (existing) {
+    existing.isVerified = true
+    await existing.save()
+    return existing
+  }
+  return User.create({ ...details, isVerified: true })
 }
 
 const run = async () => {

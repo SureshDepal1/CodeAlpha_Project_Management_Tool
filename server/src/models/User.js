@@ -28,6 +28,20 @@ const userSchema = new mongoose.Schema({
     default: '#D4EF5A',
     match: [/^#[0-9A-Fa-f]{6}$/, 'Avatar color must be a valid hex color'],
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+    default: null,
+    select: false,
+  },
+  verificationTokenExpires: {
+    type: Date,
+    default: null,
+    select: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

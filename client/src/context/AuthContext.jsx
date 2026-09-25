@@ -27,11 +27,24 @@ export function AuthProvider({ children }) {
       localStorage.setItem(TOKEN_KEY, data.token)
       setUser(data.user)
       return data
-    } catch (error) { throw new Error(errorMessage(error)) }
+    } catch (error) {
+      const authError = new Error(errorMessage(error))
+      authError.code = error.response?.data?.code
+      throw authError
+    }
   }
 
   const login = (credentials) => authenticate('/auth/login', credentials)
-  const register = (credentials) => authenticate('/auth/register', credentials)
+  const register = async (credentials) => {
+    try {
+      const { data } = await api.post('/auth/register', credentials)
+      return data
+    } catch (error) {
+      const authError = new Error(errorMessage(error))
+      authError.code = error.response?.data?.code
+      throw authError
+    }
+  }
   const logout = () => { localStorage.removeItem(TOKEN_KEY); setUser(null) }
 
   return <AuthContext.Provider value={{ user, isLoading, isAuthenticated: Boolean(user), login, register, logout }}>{children}</AuthContext.Provider>

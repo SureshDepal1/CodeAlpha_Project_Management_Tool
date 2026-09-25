@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login, getMe } from '../controllers/authController.js';
+import { register, login, getMe, resendVerification, verifyEmail } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { asyncHandler } from '../middleware/asyncMiddleware.js';
 import { validate } from '../middleware/validateMiddleware.js';
@@ -18,6 +18,8 @@ const router = Router();
 
 router.post('/register', registerValidation, validate, asyncHandler(register));
 router.post('/login', loginValidation, validate, asyncHandler(login));
+router.get('/verify-email/:token', asyncHandler(verifyEmail));
+router.post('/resend-verification', [email], validate, asyncHandler(resendVerification));
 router.get('/me', protect, asyncHandler(getMe));
 
 export default router;
