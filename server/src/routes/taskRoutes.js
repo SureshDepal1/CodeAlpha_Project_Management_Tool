@@ -7,11 +7,13 @@ import {
   deleteTask,
   getTask,
   listComments,
+  listMyTasks,
   listTasks,
   moveTask,
   updateTask,
 } from '../controllers/taskController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { listTeam } from '../controllers/projectController.js';
 import { asyncHandler } from '../middleware/asyncMiddleware.js';
 import { requireProjectMember } from '../middleware/projectMiddleware.js';
 import { requireTaskMember } from '../middleware/taskMiddleware.js';
@@ -34,6 +36,8 @@ const commentText = body('text').isString().trim().isLength({ min: 1, max: 3000 
 const router = Router();
 
 router.use(protect);
+router.get('/tasks/mine', asyncHandler(listMyTasks));
+router.get('/team', asyncHandler(listTeam));
 router.get('/projects/:projectId/tasks', [projectId, validate, asyncHandler(requireProjectMember), asyncHandler(listTasks)]);
 router.post('/projects/:projectId/tasks', [projectId, title, description, column, order, optionalAssignee, priority, dueDate, validate, asyncHandler(requireProjectMember), asyncHandler(createTask)]);
 router.patch('/tasks/:id', [taskId, optionalTitle, description, optionalColumn, order, optionalAssignee, priority, dueDate, validate, asyncHandler(requireTaskMember), asyncHandler(updateTask)]);

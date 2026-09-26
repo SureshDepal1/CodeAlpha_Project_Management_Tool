@@ -5,6 +5,7 @@ import {
   createProject,
   deleteProject,
   getProject,
+  getProjectStats,
   listProjects,
   removeMember,
   updateProject,
@@ -24,6 +25,7 @@ router.use(protect);
 router.get('/', asyncHandler(listProjects));
 router.post('/', [body('title').isString().trim().isLength({ min: 1, max: 120 }).withMessage('Title must be between 1 and 120 characters'), description], validate, asyncHandler(createProject));
 router.get('/:id', [projectId, validate, requireProjectMember], asyncHandler(getProject));
+router.get('/:id/stats', [projectId, validate, asyncHandler(requireProjectMember), asyncHandler(getProjectStats)]);
 router.patch('/:id', [projectId, title, description, validate, requireProjectMember], asyncHandler(updateProject));
 router.delete('/:id', [projectId, validate, requireProjectMember, requireProjectAdmin], asyncHandler(deleteProject));
 router.post('/:id/members', [projectId, memberEmail, validate, requireProjectMember, requireProjectAdmin], asyncHandler(addMember));

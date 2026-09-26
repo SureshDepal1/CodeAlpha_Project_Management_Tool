@@ -47,6 +47,57 @@ export const createProject = async (req, res) => {
 
 export const getProject = async (req, res) => res.status(200).json({ project: req.project });
 
+export const getProjectStats = async (req, res) => {
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const endOfWeek = new Date(startOfToday);
+  endOfWeek.setDate(endOfWeek.getDate() + 8);
+  const doneColumns = await Column.find({ project: req.project._id, title: /^done$/i }).select('_id');
+  const doneColumnIds = doneColumns.map(({ _id }) => _id);
+  const [totalTasks, completedTasks, openTasks, dueThisWeek, tasksToday] = await Promise.all([
+    Task.countDocuments({ project: req.project._id }),
+    Task.countDocuments({ project: req.project._id, column: { $in: doneColumnIds } }),
+    Task.countDocuments({ project: req.project._id, column: { $nin: doneColumnIds } }),
+    Task.countDocuments({ project: req.project._id, dueDate: { $gte: startOfToday, $lt: endOfWeek } }),
+    Task.find({ project: req.project._id, dueDate: { $gte: startOfToday, $lt: startOfTomorrow } })
+      .sort({ dueDate: 1 })
+      .populate('assignee', userFields)
+      .populate('column', 'title'),
+  ]);
+  const completionPercentage = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    return res.status(200).json({ openTasks, dueThisWeek, completionPercentage, totalTasks, completedTasks, tasksToday });
+};
+
+export const listTeam = async (req, res) => {
+  const projects = await Project.find({
+    $or: [{ owner: req.user._id }, { 'members.user': req.user._id }],
+  }).populate('owner', userFields).populate('members.user', userFields);
+  const projectIds = projects.map(({ _id }) => _id);
+  const memberMap = new Map();
+  projects.forEach((project) => {
+    const owner = project.owner;
+    if (owner) memberMap.set(owner._id.toString(), { user: owner, role: 'admin' });
+    project.members.forEach(({ user, role }) => {
+      if (!user) return;
+      const existing = memberMap.get(user._id.toString());
+      memberMap.set(user._id.toString(), { user, role: existing?.role === 'admin' || role === 'admin' ? 'admin' : 'member' });
+    });
+  });
+  const members = [...memberMap.values()];
+  const tasks = await Task.find({ project: { $in: projectIds }, assignee: { $in: members.map(({ user }) => user._id) } })
+    .sort({ dueDate: 1, createdAt: -1 })
+    .populate('assignee', userFields)
+    .populate('project', 'title members owner')
+    .populate('column', 'title');
+  const response = members.map(({ user, role }) => {
+    const assignedTasks = tasks.filter((task) => task.assignee?._id.equals(user._id));
+    return { ...user.toObject(), role, assignedTaskCount: assignedTasks.length, assignedTasks };
+  });
+  return res.status(200).json({ members: response.filter(({ _id }) => !_id.equals(req.user._id)) });
+};
+
 export const updateProject = async (req, res) => {
   const { title, description } = req.body;
 

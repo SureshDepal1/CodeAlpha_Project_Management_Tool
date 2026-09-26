@@ -1,5 +1,6 @@
 import Column from '../models/Column.js';
 import Comment from '../models/Comment.js';
+import Project from '../models/Project.js';
 import Task from '../models/Task.js';
 import User from '../models/User.js';
 import { createNotification, emitToProject } from '../realtime/socket.js';
@@ -173,4 +174,23 @@ export const deleteComment = async (req, res) => {
   await comment.deleteOne();
   emitToProject(req.task.project, 'comment:deleted', { taskId: req.task._id, commentId: req.params.commentId, actorId: req.user._id });
   return res.status(204).send();
+};
+
+const taskView = (query) => query
+  .populate('assignee', userFields)
+  .populate('createdBy', userFields)
+  .populate({ path: 'project', select: 'title owner members', populate: [{ path: 'owner', select: userFields }, { path: 'members.user', select: userFields }] })
+  .populate('column', 'title');
+
+const projectIdsForUser = async (userId) => {
+  const projects = await Project.find({
+    $or: [{ owner: userId }, { 'members.user': userId }],
+  }).select('_id');
+  return projects.map(({ _id }) => _id);
+};
+
+export const listMyTasks = async (req, res) => {
+  const projectIds = await projectIdsForUser(req.user._id);
+  const tasks = await taskView(Task.find({ project: { $in: projectIds }, assignee: req.user._id }).sort({ dueDate: 1, createdAt: -1 }));
+  return res.status(200).json({ tasks });
 };

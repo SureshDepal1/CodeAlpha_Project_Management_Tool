@@ -2,6 +2,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'http';
+import { fileURLToPath } from 'url';
 import { connectDB } from './config/db.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import healthRoutes from './routes/healthRoutes.js';
@@ -12,7 +13,7 @@ import taskRoutes from './routes/taskRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import { initSocket } from './realtime/socket.js';
 
-dotenv.config();
+dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)) });
 
 const app = express();
 const port = process.env.PORT || 5000;

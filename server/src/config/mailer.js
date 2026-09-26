@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
+const getTransporter = () => nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
@@ -9,6 +9,7 @@ const transporter = nodemailer.createTransport({
 })
 
 export const sendVerificationEmail = async ({ email, name, token }) => {
+  const transporter = getTransporter()
   const verificationUrl = `${(process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '')}/verify-email/${token}`
   await transporter.sendMail({
     from: `TaskFlow <${process.env.EMAIL_USER}>`,
