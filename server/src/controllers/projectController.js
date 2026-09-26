@@ -45,7 +45,10 @@ export const createProject = async (req, res) => {
   return res.status(201).json({ project: populatedProject });
 };
 
-export const getProject = async (req, res) => res.status(200).json({ project: req.project });
+export const getProject = async (req, res) => {
+  const populatedProject = await populateProject(Project.findById(req.project._id));
+  return res.status(200).json({ project: populatedProject });
+};
 
 export const getProjectStats = async (req, res) => {
   const now = new Date();
