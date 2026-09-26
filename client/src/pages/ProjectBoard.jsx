@@ -8,6 +8,7 @@ import Avatar from '../components/Avatar.jsx'
 import Badge from '../components/Badge.jsx'
 import Button from '../components/Button.jsx'
 import Input from '../components/Input.jsx'
+import Modal from '../components/Modal.jsx'
 import TaskDetailModal from '../components/TaskDetailModal.jsx'
 import { useSocket } from '../context/SocketContext.jsx'
 import { useAuth } from '../hooks/useAuth.js'
@@ -68,6 +69,8 @@ export default function ProjectBoard() {
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [showColumnForm, setShowColumnForm] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -117,6 +120,9 @@ export default function ProjectBoard() {
     const members = [project.owner, ...(project.members || []).map((member) => member.user)]
     return members.filter(Boolean).filter((member, index, all) => all.findIndex((item) => item._id === member._id) === index)
   }, [project])
+  const userId = user?.id?.toString()
+  const canDeleteProject = Boolean(project && userId && (project.owner?._id?.toString() === userId
+    || project.members?.some(({ user: member, role }) => role === 'admin' && member?._id?.toString() === userId)))
   const assignees = projectMembers
   const visibleTasks = useMemo(() => tasks.filter((task) => task.title.toLowerCase().includes(query.toLowerCase()) && (priority === 'all' || task.priority === priority) && (assignee === 'all' || task.assignee?._id === assignee)), [tasks, query, priority, assignee])
   const tasksForColumn = (columnId) => visibleTasks.filter((task) => task.column === columnId).sort((first, second) => first.order - second.order)
@@ -186,12 +192,23 @@ export default function ProjectBoard() {
     } catch (error) { toast.error(error.response?.data?.message || 'Could not delete column.') }
   }
 
+  const deleteProject = async () => {
+    setIsDeleting(true)
+    try {
+      await api.delete(`/projects/${projectId}`)
+      toast.success('Project deleted successfully.')
+      navigate('/')
+    } catch {
+      toast.error('Unable to delete project. Please try again.')
+    } finally { setIsDeleting(false) }
+  }
+
   return <main className="min-h-screen bg-[#f7f8fc] text-slate-900">
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-[1800px] flex-wrap items-center gap-4 px-5 py-4 md:px-8">
         <button onClick={() => navigate('/')} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900" aria-label="Back to workspace"><ArrowLeft size={19} /></button>
         <div className="min-w-0 flex-1"><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Project board</p><h1 className="truncate text-xl font-extrabold tracking-tight">{project?.title || 'Loading project...'}</h1></div>
-        {project && <Button variant="secondary" onClick={() => navigate('/')}><Users size={16} /> Members</Button>}
+        {project && <div className="flex items-center gap-2"><Button variant="secondary" onClick={() => navigate('/')}><Users size={16} /> Members</Button>{canDeleteProject && <Button className="border border-rose-200 bg-white text-rose-600 hover:border-rose-300 hover:bg-rose-50" onClick={() => setIsDeleteModalOpen(true)}><Trash2 size={16} /> Delete Project</Button>}</div>}
       </div>
       <div className="mx-auto flex max-w-[1800px] flex-wrap gap-3 px-5 pb-4 md:px-8">
         <label className="relative min-w-[220px] flex-1"><Search className="absolute left-3 top-2.5 text-slate-400" size={16} /><input className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10" placeholder="Search tasks..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>
@@ -206,5 +223,9 @@ export default function ProjectBoard() {
       </div></DragDropContext>
     </section>
     <TaskDetailModal task={selectedTask} members={projectMembers} columns={columns} createContext={newTaskColumn ? { projectId, column: newTaskColumn } : null} onClose={() => { setSelectedTask(null); setNewTaskColumn(null) }} onTaskUpdated={updateTask} onTaskCreated={addCreatedTask} onTaskDeleted={deleteTask} />
+    <Modal open={isDeleteModalOpen} title="Delete Project?" onClose={() => !isDeleting && setIsDeleteModalOpen(false)}>
+      <p className="text-sm leading-6 text-slate-600">This will permanently delete this project and its associated tasks. This action cannot be undone.</p>
+      <div className="mt-6 flex justify-end gap-3"><Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)} disabled={isDeleting}>Cancel</Button><Button className="bg-rose-600 text-white shadow-lg shadow-rose-600/20 hover:bg-rose-700" onClick={deleteProject} disabled={isDeleting}><Trash2 size={16} /> {isDeleting ? 'Deleting...' : 'Delete Project'}</Button></div>
+    </Modal>
   </main>
 }
