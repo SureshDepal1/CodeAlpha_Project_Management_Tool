@@ -65,7 +65,6 @@ export default function ProjectBoard() {
   const [priority, setPriority] = useState('all')
   const [assignee, setAssignee] = useState('all')
   const [newTaskColumn, setNewTaskColumn] = useState(null)
-  const [newTaskTitle, setNewTaskTitle] = useState('')
   const [newColumnTitle, setNewColumnTitle] = useState('')
   const [showColumnForm, setShowColumnForm] = useState(false)
   const [selectedTask, setSelectedTask] = useState(null)
@@ -141,17 +140,7 @@ export default function ProjectBoard() {
     }
   }
 
-  const addTask = async (event, columnId) => {
-    event.preventDefault()
-    if (!newTaskTitle.trim()) return
-    try {
-      const { data } = await api.post(`/projects/${projectId}/tasks`, { title: newTaskTitle.trim(), column: columnId, priority: 'medium' })
-      setTasks((current) => current.some((task) => task._id === data.task._id) ? current : [...current, data.task])
-      setNewTaskTitle('')
-      setNewTaskColumn(null)
-      toast.success('Task added.')
-    } catch (error) { toast.error(error.response?.data?.message || 'Could not add task.') }
-  }
+  const addTask = (columnId) => setNewTaskColumn(columnId)
 
   const addColumn = async (event) => {
     event.preventDefault()
@@ -169,6 +158,13 @@ export default function ProjectBoard() {
     setTasks((current) => current.map((task) => task._id === updatedTask._id ? { ...task, ...updatedTask } : task))
     setSelectedTask((current) => current?._id === updatedTask._id ? { ...current, ...updatedTask } : current)
   }
+
+  const addCreatedTask = (createdTask) => {
+    setTasks((current) => current.some((task) => task._id === createdTask._id) ? current : [...current, createdTask])
+    setNewTaskColumn(null)
+  }
+
+  const deleteTask = (taskId) => setTasks((current) => current.filter((task) => task._id !== taskId))
 
   const renameColumn = async (column) => {
     const title = window.prompt('Rename column', column.title)
@@ -205,10 +201,10 @@ export default function ProjectBoard() {
     </header>
     <section className="mx-auto max-w-[1800px] overflow-x-auto px-5 py-6 md:px-8">
       <DragDropContext onDragEnd={onDragEnd}><div className="flex min-h-[calc(100vh-190px)] items-start gap-5 pb-5">
-        {isLoading ? [1, 2, 3].map((item) => <ColumnSkeleton key={item} />) : columns.map((column) => <Droppable droppableId={column._id} key={column._id}>{(provided) => <div ref={provided.innerRef} {...provided.droppableProps} className="w-[310px] shrink-0 rounded-2xl bg-slate-100/90 p-3"><div className="mb-3 flex items-center gap-2 px-2"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" /><h2 className="flex-1 text-sm font-extrabold">{column.title}</h2><span className="text-xs font-bold text-slate-400">{tasksForColumn(column._id).length}</span><button onClick={() => renameColumn(column)} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-indigo-600" aria-label={`Rename ${column.title}`}><Pencil size={14} /></button><button onClick={() => deleteColumn(column)} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-rose-600" aria-label={`Delete ${column.title}`}><Trash2 size={14} /></button></div><div className="min-h-24 space-y-3">{tasksForColumn(column._id).map((task, index) => <TaskCard key={task._id} task={task} index={index} onOpen={setSelectedTask} />)}{provided.placeholder}</div>{newTaskColumn === column._id ? <form className="mt-3 rounded-xl bg-white p-3 shadow-sm" onSubmit={(event) => addTask(event, column._id)}><input autoFocus className="w-full text-sm outline-none" placeholder="Task title..." value={newTaskTitle} onChange={(event) => setNewTaskTitle(event.target.value)} /><div className="mt-3 flex gap-2"><Button className="min-h-9 px-3 text-xs" type="submit">Add task</Button><Button className="min-h-9 px-3 text-xs" type="button" variant="ghost" onClick={() => setNewTaskColumn(null)}>Cancel</Button></div></form> : <button onClick={() => setNewTaskColumn(column._id)} className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-indigo-600"><Plus size={16} /> Add task</button>}</div>}</Droppable>)}
+        {isLoading ? [1, 2, 3].map((item) => <ColumnSkeleton key={item} />) : columns.map((column) => <Droppable droppableId={column._id} key={column._id}>{(provided) => <div ref={provided.innerRef} {...provided.droppableProps} className="w-[310px] shrink-0 rounded-2xl bg-slate-100/90 p-3"><div className="mb-3 flex items-center gap-2 px-2"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" /><h2 className="flex-1 text-sm font-extrabold">{column.title}</h2><span className="text-xs font-bold text-slate-400">{tasksForColumn(column._id).length}</span><button onClick={() => renameColumn(column)} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-indigo-600" aria-label={`Rename ${column.title}`}><Pencil size={14} /></button><button onClick={() => deleteColumn(column)} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white hover:text-rose-600" aria-label={`Delete ${column.title}`}><Trash2 size={14} /></button></div><div className="min-h-24 space-y-3">{tasksForColumn(column._id).map((task, index) => <TaskCard key={task._id} task={task} index={index} onOpen={setSelectedTask} />)}{provided.placeholder}</div><button onClick={() => addTask(column._id)} className="mt-3 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-indigo-600"><Plus size={16} /> Add task</button></div>}</Droppable>)}
         <div className="w-[270px] shrink-0">{showColumnForm ? <form className="rounded-2xl border border-dashed border-indigo-300 bg-indigo-50 p-4" onSubmit={addColumn}><Input label="New column" placeholder="Review" value={newColumnTitle} onChange={(event) => setNewColumnTitle(event.target.value)} autoFocus /><div className="mt-3 flex gap-2"><Button className="min-h-9 px-3 text-xs" type="submit">Add</Button><Button className="min-h-9 px-3 text-xs" type="button" variant="ghost" onClick={() => setShowColumnForm(false)}>Cancel</Button></div></form> : <button onClick={() => setShowColumnForm(true)} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-sm font-bold text-slate-500 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"><Plus size={17} /> Add column</button>}</div>
       </div></DragDropContext>
     </section>
-    <TaskDetailModal task={selectedTask} members={projectMembers} onClose={() => setSelectedTask(null)} onTaskUpdated={updateTask} />
+    <TaskDetailModal task={selectedTask} members={projectMembers} columns={columns} createContext={newTaskColumn ? { projectId, column: newTaskColumn } : null} onClose={() => { setSelectedTask(null); setNewTaskColumn(null) }} onTaskUpdated={updateTask} onTaskCreated={addCreatedTask} onTaskDeleted={deleteTask} />
   </main>
 }

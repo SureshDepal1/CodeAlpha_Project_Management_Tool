@@ -87,7 +87,10 @@ export const updateTask = async (req, res) => {
   for (const field of taskFields) {
     if (req.body[field] !== undefined) req.task[field] = req.body[field];
   }
-  if (req.body.column !== undefined) await ensureColumnInProject(req.project._id, req.body.column);
+  if (req.body.column !== undefined) {
+    await ensureColumnInProject(req.project._id, req.body.column);
+    req.task.column = req.body.column;
+  }
   if (req.body.assignee !== undefined) await validateAssignee(req.project, req.body.assignee);
   await req.task.save();
   const task = await populateTask(Task.findById(req.task._id));
